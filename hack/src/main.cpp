@@ -33,7 +33,16 @@ long long FindSignature(void* startAddress, size_t size, const unsigned char* si
     unsigned char* end = start + size - sigSize;
     for (unsigned char* p = start; p <= end; ++p)
     {
-        if (memcmp(p, sig, sigSize) == 0)
+        bool match = true;
+        for (size_t i = 0; i < sigSize; ++i)
+        {
+            if (sig[i] != 0x00 && sig[i] != p[i] && sig[i] != '?')
+            {
+                match = false;
+                break;
+            }
+        }
+        if (match)
         {
             std::stringstream ss;
             ss << std::hex;
@@ -68,27 +77,27 @@ int main() {
         std::cout << "Failed to open process" << std::endl;
         return 1;
     }
+    
+    LPVOID address{};
+    std::string input;
 
-    /*
     printf("finding sig\n");
-    bool is_correct = false;
+    const unsigned char signature[] = { 0x8b, 0x44, 0x24, 0x00, 0x83, 0xf8, 0x00, 0x74, 0x78, 0x78, 0x3f, 0x78 };
+
     int* p = new int(42);
-    void* address = FindSignature(p, sizeof(int), signature, sizeof(signature));
-    if (address) {
-        std::cout << "Found signature at address: " << address << std::endl << "is this correct? true/false: ";
-        std::cin >> is_correct;
-        Sleep(200);
+    long long sig = FindSignature(p, sizeof(int), signature, sizeof(signature));
+
+    if (sig == 0) {
+        printf("failed to find sig\n");
     }
     else {
-        std::cout << "Signature not found." << std::endl;
-        return 0;
-        // Write a value to the process's memory
+        std::cout << "Found signature at address: " << address << std::endl << "is this correct? y\\n\n";
+        std::cin >> input;
     }
-    delete p;
-
-    if (is_correct == false) {
+        
+    if(input[1] == 'y') address = reinterpret_cast<LPVOID>(sig);
+    else {
         long long addres = 1;
-        LPVOID address;
         std::cout << "memory addres: ";
         std::cin >> std::hex >> addres;
         address = reinterpret_cast<LPVOID>(addres);
@@ -99,36 +108,6 @@ int main() {
             address = reinterpret_cast<LPVOID>(addres);
         }
     }
-        long long add = 0x000008C462FFCF0;
-    */
-
-    printf("finding sig\n");
-    const unsigned char signature[] = { 0x2a, 0x00 }; // the signature pattern to search for
-
-    int* p = new int(42);
-    long long sig = FindSignature(p, sizeof(int), signature, sizeof(signature));
-    
-    LPVOID address{};
-
-    if (sig != 0) {
-        std::cout << "Found signature at address: " << address << std::endl << "is this correct? y\\n\n";
-        std::string input;
-        std::cin >> input;
-        if(input[1] == 'y') address = reinterpret_cast<LPVOID>(sig);
-        else {
-            long long addres = 1;
-            std::cout << "memory addres: ";
-            std::cin >> std::hex >> addres;
-            address = reinterpret_cast<LPVOID>(addres);
-            std::cout << addres << std::endl << "start: ";
-            if (addres == 1) {
-                std::cout << "memory addres: ";
-                std::cin >> std::hex >> addres;
-                address = reinterpret_cast<LPVOID>(addres);
-            }
-        }
-    }
-
 
     int value = 1;
     while (value != 0) {
