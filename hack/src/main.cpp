@@ -61,7 +61,8 @@ int main() {
     std::cout << "input memory addres: ";
     std::cin >> std::hex >> addres;
     LPVOID address = reinterpret_cast<LPVOID>(addres);
-    std::cout << addres << std::endl;
+    std::cout << addres << std::endl << "start: ";
+    std::cin.get();
 
     int value = 1;
     while (value != 0) {

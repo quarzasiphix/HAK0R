@@ -10,7 +10,8 @@ int main() {
 		system("cls");
 		std::cout << ". addres: " << pMyVariable << std::endl;
 		std::cout << "myVariable: " << myVariable << std::endl;
-		while (myVariable == 42) Sleep(10);
+		while(myVariable == 42) Sleep(500);
+		myVariable += 1;
 		Sleep(200);
 	}
 
