@@ -5,9 +5,11 @@ int main() {
 	int myVariable = 42;
 	int* pMyVariable = &myVariable;
 
+
 	while (myVariable != 0) {
-		std::cout << "myVariable: " << myVariable << ". addres: " << pMyVariable << std::endl;
-		Sleep(300);
+		std::cout << ". addres: " << pMyVariable << std::endl;
+		std::cout << "myVariable: " << myVariable << std::endl;
+		std::cin.get();
 		system("cls");
 	}
 

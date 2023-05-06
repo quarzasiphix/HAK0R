@@ -38,7 +38,7 @@ DWORD GetProcessIdByName(const std::wstring& name) {
     CloseHandle(snapshot);
     return pid;
 }
-
+    
 
 int main() {
     // Find the window with the specified class name or window title
@@ -63,14 +63,17 @@ int main() {
     LPVOID address = reinterpret_cast<LPVOID>(addres);
     std::cout << addres << std::endl;
 
-    int input = 10;
-    int value = 0;
-    while (input != 0) {
+    int value = 1;
+    while (value != 0) {
         if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) return 0;
         std::cout << "value: " << value << std::endl;
-        std::cout << "set value: ";
-        std::cin >> input;
-        if(!WriteProcessMemory(hProcess, address, &input, sizeof(input), NULL)) return 0;
+        for (int i = 1; i < 11; i++) {
+            if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) return 0;
+            std::cout << "loop: " << i << " value: " << value << std::endl;
+            if(!WriteProcessMemory(hProcess, address, &i, sizeof(i), NULL)) return 0;
+            Sleep(500);
+        }
+
         printf("written\n");
     }
 
