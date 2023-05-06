@@ -1,6 +1,15 @@
 #include <common.hpp>
 
 int main() {
-	std::cout << "hello world" << std::endl;
-	std::cin.get();
+	
+	int myVariable = 42;
+	int* pMyVariable = &myVariable;
+
+	while (myVariable != 0) {
+		std::cout << "myVariable: " << myVariable << ". addres: " << pMyVariable << std::endl;
+		Sleep(300);
+		system("cls");
+	}
+
+	printf("myvar = 0, bye\n");
 }
