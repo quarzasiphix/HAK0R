@@ -1,5 +1,28 @@
 #include <common.hpp>
 
+void Parse(char* combo, char* pattern, char* mask)
+{
+    char lastChar = ' ';
+    unsigned int j = 0;
+
+    for (unsigned int i = 0; i < strlen(combo); i++)
+    {
+        if ((combo[i] == '?' || combo[i] == '*') && (lastChar != '?' && lastChar != '*'))
+        {
+            pattern[j] = mask[j] = '?';
+            j++;
+        }
+
+        else if (isspace(lastChar))
+        {
+            pattern[j] = lastChar = (char)strtol(&combo[i], 0, 16);
+            mask[j] = 'x';
+            j++;
+        }
+        lastChar = combo[i];
+    }
+    pattern[j] = mask[j] = '\0';
+}
 
 DWORD GetProcessIdByName(const std::wstring& name) {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -27,37 +50,36 @@ DWORD GetProcessIdByName(const std::wstring& name) {
     return pid;
 }
    
-long long FindSignature(void* startAddress, size_t size, const unsigned char* sig, size_t sigSize)
-{
-    unsigned char* start = reinterpret_cast<unsigned char*>(startAddress);
-    unsigned char* end = start + size - sigSize;
-    for (unsigned char* p = start; p <= end; ++p)
-    {
-        bool match = true;
-        for (size_t i = 0; i < sigSize; ++i)
-        {
-            if (sig[i] != 0x00 && sig[i] != p[i] && sig[i] != '?')
-            {
-                match = false;
+DWORD_PTR FindSignature(HANDLE processHandle, const char* signature, const char* mask) {
+    // Get the module information for the main module of the specified process
+    MODULEINFO moduleInfo;
+    HMODULE moduleHandle = nullptr;
+    if (EnumProcessModules(processHandle, &moduleHandle, sizeof(moduleHandle), nullptr)) {
+        GetModuleInformation(processHandle, moduleHandle, &moduleInfo, sizeof(moduleInfo));
+    }
+    else {
+        std::cerr << "Failed to get module handle." << std::endl;
+        return 0;
+    }
+
+    // Search for the signature in the module memory
+    const char* moduleStart = reinterpret_cast<const char*>(moduleInfo.lpBaseOfDll);
+    const char* moduleEnd = moduleStart + moduleInfo.SizeOfImage - strlen(mask);
+    for (const char* p = moduleStart; p < moduleEnd; ++p) {
+        bool found = true;
+        for (size_t i = 0; i < strlen(mask); ++i) {
+            if (mask[i] != '?' && p[i] != signature[i]) {
+                found = false;
                 break;
             }
         }
-        if (match)
-        {
-            std::stringstream ss;
-            ss << std::hex;
-            for (size_t i = 0; i < sizeof(p); ++i)
-            {
-                ss << static_cast<unsigned int>(p[i]);
-            }
-
-            long long result;
-            ss >> std::hex >> result;
-
-            return result; // return the address of the match
+        if (found) {
+            return reinterpret_cast<DWORD_PTR>(p);
         }
     }
-    return 0; // no match found
+
+    std::cerr << "Signature not found." << std::endl;
+    return 0;
 }
 
 int main() {
@@ -79,35 +101,47 @@ int main() {
     }
     
     LPVOID address{};
-    std::string input;
 
-    printf("finding sig\n");
-    const unsigned char signature[] = { 0x8b, 0x44, 0x24, 0x00, 0x83, 0xf8, 0x00, 0x74, 0x78, 0x78, 0x3f, 0x78 };
+    HMODULE moduleHandle{};
+    EnumProcessModules(hProcess, &moduleHandle, sizeof(moduleHandle), nullptr); 
+        MODULEINFO moduleInfo{};
+        GetModuleInformation(hProcess, moduleHandle, &moduleInfo, sizeof(moduleInfo));
 
-    int* p = new int(42);
-    long long sig = FindSignature(p, sizeof(int), signature, sizeof(signature));
+        char signature[100];
+        char mask[100];
 
-    if (sig == 0) {
-        printf("failed to find sig\n");
-    }
-    else {
-        std::cout << "Found signature at address: " << address << std::endl << "is this correct? y\\n\n";
-        std::cin >> input;
-    }
-        
-    if(input[1] == 'y') address = reinterpret_cast<LPVOID>(sig);
-    else {
-        long long addres = 1;
-        std::cout << "memory addres: ";
-        std::cin >> std::hex >> addres;
-        address = reinterpret_cast<LPVOID>(addres);
-        std::cout << addres << std::endl << "start: ";
-        if (addres == 1) {
-            std::cout << "memory addres: ";
-            std::cin >> std::hex >> addres;
-            address = reinterpret_cast<LPVOID>(addres);
+        char combo[100] = "\x89\x44\x24\x00\xff\x15 xxx ? xx";
+
+        Parse(combo, signature, mask);
+
+        // Calculate the start address and size of the module
+        DWORD_PTR startAddress = reinterpret_cast<DWORD_PTR>(moduleInfo.lpBaseOfDll);
+        DWORD_PTR endAddress = startAddress + moduleInfo.SizeOfImage;
+
+        DWORD_PTR signatureAddress = FindSignature(hProcess, signature, mask);
+        if (signatureAddress != 0) {
+            std::cout << "Signature found at address: " << std::hex << signatureAddress << std::endl;
+            std::string input;
+            if (signatureAddress >= startAddress && signatureAddress <= endAddress) {
+                std::cout << "Address is within module bounds." << std::endl << "is this correct? y/n: ";
+                std::cin >> input;
+                if (input[1] == 'y') address = reinterpret_cast<LPVOID>(signatureAddress);
+                else {
+                    long long addres = 1;
+                    std::cout << "memory addres: ";
+                    std::cin >> std::hex >> addres;
+                    address = reinterpret_cast<LPVOID>(addres);
+                    std::cout << addres << std::endl << "start: ";
+                    if (addres == 1) {
+                        std::cout << "memory addres: ";
+                        std::cin >> std::hex >> addres;
+                        address = reinterpret_cast<LPVOID>(addres);
+                    }
+                }
+            }
         }
-    }
+    
+
 
     int value = 1;
     while (value != 0) {
