@@ -82,6 +82,99 @@ DWORD_PTR FindSignature(HANDLE processHandle, const char* signature, const char*
     return 0;
 }
 
+std::vector<int> StringToBytes(const std::string& str)
+{
+    std::vector<int> bytes;
+    std::istringstream iss(str);
+    std::string token;
+    while (std::getline(iss, token, ' ')) {
+        if (token == "?") {
+            bytes.push_back(-1);
+        }
+        else {
+            bytes.push_back(std::stoi(token, nullptr, 16));
+        }
+    }
+    return bytes;
+}
+
+void* FindPattern(HANDLE hProcess, uintptr_t start, uintptr_t end, const char* pattern) {
+    const char* p = pattern;
+    void* first_match = nullptr;
+
+    // Calculate the length of the memory region to read
+    size_t length = end - start;
+
+    // Allocate a buffer to hold the memory read from the external process
+    std::vector<char> buffer(length);
+
+    // Read the memory from the external process into the buffer
+    SIZE_T bytesRead;
+    if (!ReadProcessMemory(hProcess, (LPCVOID)start, &buffer[0], length, &bytesRead) || bytesRead != length) {
+        return nullptr;
+    }
+
+    // Search for the pattern in the buffer
+    for (size_t i = 0; i < length; ++i) {
+        if (buffer[i] == *p || *p == '?') {
+            if (!first_match) {
+                first_match = (void*)(start + i);
+            }
+            ++p;
+            if (!*p) {
+                return first_match;
+            }
+        }
+        else {
+            p = pattern;
+            first_match = nullptr;
+        }
+    }
+
+    return nullptr;
+}
+
+void* patternScan(char* base, size_t size, char* pattern, char* mask) {
+    size_t patternLength = strlen(pattern);
+    for (unsigned int i = 0; i < size - patternLength; i++) {
+        bool found = true;
+        for (unsigned int j = 0; j < patternLength; j++) { // fix: changed '>' to '<'
+            if (mask[j] != '?' && pattern[j] != *(base + i + j)) {
+                found = false;
+                break;
+            }
+        }
+        if (found) return (void*)(base + i);
+    }
+
+    return nullptr; // fix: use nullptr instead of 0
+}
+
+void* exPatternScan(HANDLE hproc, uintptr_t begin, uintptr_t end, char* pattern, char* mask) {
+    uintptr_t currentchunk = begin;
+    SIZE_T bytesRead;
+
+    while (currentchunk < end) {
+        char buffer[4096];
+
+        DWORD oldprotect;
+        VirtualProtectEx(hproc, (void*)currentchunk, sizeof(buffer), PAGE_READWRITE, &oldprotect); // fix: changed protection to PAGE_READWRITE
+        ReadProcessMemory(hproc, (void*)currentchunk, buffer, sizeof(buffer), &bytesRead); // fix: removed unnecessary '&'
+        VirtualProtectEx(hproc, (void*)currentchunk, sizeof(buffer), oldprotect, NULL);
+
+        if (bytesRead == 0) return nullptr;
+
+        void* internalAddress = patternScan(buffer, bytesRead, pattern, mask); // fix: pass buffer instead of &buffer
+
+        if (internalAddress != nullptr) {
+            uintptr_t offsetFromBuffer = (uintptr_t)internalAddress - (uintptr_t)buffer;
+            return (void*)(currentchunk + offsetFromBuffer);
+        }
+        else currentchunk += bytesRead; // fix: use += instead of + to update currentchunk
+    }
+    return nullptr; // fix: use nullptr instead of 0
+}
+
 int main() {
     // Find the window with the specified class name or window title
     std::wstring name = L"victim.exe";
@@ -100,57 +193,71 @@ int main() {
         return 1;
     }
     
-    LPVOID address{};
+    // Get the module handle for the target module in the target process
+    HMODULE hModule = nullptr;
+    DWORD cbNeeded = 0;
+    if (!EnumProcessModules(hProcess, &hModule, sizeof(hModule), &cbNeeded)) {
+        std::cerr << "Failed to enumerate process modules: " << GetLastError() << std::endl;
+        CloseHandle(hProcess);
+        return 0;
+    }
 
-    HMODULE moduleHandle{};
-    EnumProcessModules(hProcess, &moduleHandle, sizeof(moduleHandle), nullptr); 
-        MODULEINFO moduleInfo{};
-        GetModuleInformation(hProcess, moduleHandle, &moduleInfo, sizeof(moduleInfo));
+    // Allocate memory to store the module information
+    MODULEINFO module_info = { 0 };
+    if (!GetModuleInformation(hProcess, hModule, &module_info, sizeof(module_info))) {
+        std::cerr << "Failed to get module information: " << GetLastError() << std::endl;
+        CloseHandle(hProcess);
+        return 0;
+    }
 
-        char signature[100];
-        char mask[100];
+    // Calculate the start and end addresses of the module in the target process
+    // Determine the size of the module and set the end address to search
+    uintptr_t startAddress = (uintptr_t)module_info.lpBaseOfDll;
+    uintptr_t endAddress = startAddress + module_info.SizeOfImage;
 
-        char combo[100] = "\x89\x44\x24\x00\xff\x15 xxx ? xx";
+    const char* sig = "83 f8 ? 75 ? 66 0f 1f 84 00";
 
-        Parse(combo, signature, mask);
+    char pattern[30] = "\x2a\x00";
+    char mask[20] = "xx";
+    void* addres = exPatternScan(hProcess, startAddress, endAddress, pattern, mask);
+    if (addres == NULL) {
+        printf("fucked up finding sig, %s", sig);
+        std::cout << "\ntype in memory address instead? \n y/n: ";
+    }
+    else {
+        int test = 0;
+        if (ReadProcessMemory(hProcess, addres, &test, sizeof(test), NULL)) {
+            std::cout << "Variable value: " << test << std::endl;
+            std::cout << "Variable address: " << std::hex << reinterpret_cast<uintptr_t>(addres) << std::endl;
 
-        // Calculate the start address and size of the module
-        DWORD_PTR startAddress = reinterpret_cast<DWORD_PTR>(moduleInfo.lpBaseOfDll);
-        DWORD_PTR endAddress = startAddress + moduleInfo.SizeOfImage;
-
-        DWORD_PTR signatureAddress = FindSignature(hProcess, signature, mask);
-        if (signatureAddress != 0) {
-            std::cout << "Signature found at address: " << std::hex << signatureAddress << std::endl;
-            std::string input;
-            if (signatureAddress >= startAddress && signatureAddress <= endAddress) {
-                std::cout << "Address is within module bounds." << std::endl << "is this correct? y/n: ";
-                std::cin >> input;
-                if (input[1] == 'y') address = reinterpret_cast<LPVOID>(signatureAddress);
-                else {
-                    long long addres = 1;
-                    std::cout << "memory addres: ";
-                    std::cin >> std::hex >> addres;
-                    address = reinterpret_cast<LPVOID>(addres);
-                    std::cout << addres << std::endl << "start: ";
-                    if (addres == 1) {
-                        std::cout << "memory addres: ";
-                        std::cin >> std::hex >> addres;
-                        address = reinterpret_cast<LPVOID>(addres);
-                    }
-                }
-            }
+            std::cout << "\nAddress is within module bounds." << std::endl << "is this correct? y/n: ";
         }
-    
+        else {
+            std::cerr << "Failed to read variable: " << GetLastError() << std::endl;
+        }
+    }
 
+    void* address;
+    std::string input;
+    std::cin >> input;
+    if(input != "y") {
+        long long adresinput;
+        std::cout << "memory addres: ";
+        std::cin >> std::hex >> adresinput;
+        address = reinterpret_cast<LPVOID>(adresinput);
+    }
+    else {
+        address = reinterpret_cast<LPVOID>(addres);
+    }
 
     int value = 1;
     while (value != 0) {
-        if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) return 0;
+        if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) printf("failed reading");
         std::cout << "value: " << value << std::endl;
         for (int i = 1; i < 11; i++) {
-            if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) return 0;
+            if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) printf("failed reading");
             std::cout << "loop: " << i << " value: " << value << std::endl;
-            if(!WriteProcessMemory(hProcess, address, &i, sizeof(i), NULL)) return 0;
+            if(!WriteProcessMemory(hProcess, address, &i, sizeof(i), NULL)) printf("failed writing");
             Sleep(500);
         }
 

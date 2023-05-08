@@ -7,5 +7,7 @@
 #include <sstream>
 #include <TlHelp32.h>
 #include <Psapi.h>
+#include <search.h>
+
 
 #include <proc/proc.hpp>
