@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.5.33530.505
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hack", "hack\hack.vcxproj", "{B39E8403-075C-4AE6-989D-7C54906B08A7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{214BBA7B-E78D-431E-9BC9-FFA5414687DB} = {214BBA7B-E78D-431E-9BC9-FFA5414687DB}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "victim", "victim\victim.vcxproj", "{214BBA7B-E78D-431E-9BC9-FFA5414687DB}"
 EndProject

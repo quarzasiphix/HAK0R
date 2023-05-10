@@ -98,6 +98,40 @@ std::vector<int> StringToBytes(const std::string& str)
     return bytes;
 }
 
+DWORD GetMainThreadId(DWORD processId)
+{
+    HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (hThreadSnapshot == INVALID_HANDLE_VALUE)
+    {
+        return 0;
+    }
+
+    THREADENTRY32 te32;
+    te32.dwSize = sizeof(THREADENTRY32);
+
+    DWORD mainThreadId = 0;
+    DWORD currentProcessId = GetCurrentProcessId();
+
+    if (Thread32First(hThreadSnapshot, &te32))
+    {
+        do
+        {
+            if (te32.th32OwnerProcessID == processId)
+            {
+                mainThreadId = te32.th32ThreadID;
+                if (te32.th32OwnerProcessID == currentProcessId)
+                {
+                    break;  // Found the main thread of the target process in the same process
+                }
+            }
+        } while (Thread32Next(hThreadSnapshot, &te32));
+    }
+
+    CloseHandle(hThreadSnapshot);
+    return mainThreadId;
+}
+
+
 void* FindPattern(HANDLE hProcess, uintptr_t start, uintptr_t end, const char* pattern) {
     const char* p = pattern;
     void* first_match = nullptr;
@@ -168,6 +202,7 @@ void* exPatternScan(HANDLE hproc, uintptr_t begin, uintptr_t end, char* pattern,
 
         if (internalAddress != nullptr) {
             uintptr_t offsetFromBuffer = (uintptr_t)internalAddress - (uintptr_t)buffer;
+            printf("offset from buffer: %s", offsetFromBuffer);
             return (void*)(currentchunk + offsetFromBuffer);
         }
         else currentchunk += bytesRead; // fix: use += instead of + to update currentchunk
@@ -184,12 +219,19 @@ int main() {
         pid = GetProcessIdByName(name);
         Sleep(300);
     }
+
     system("cls");
 
     // Open the target process with PROCESS_VM_WRITE access
     HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
     if (hProcess == NULL) {
         std::cout << "Failed to open process" << std::endl;
+        return 1;
+    }
+
+    DWORD targetMainThreadId = GetMainThreadId(pid);
+    if (targetMainThreadId == 0) {
+        std::cout << "Failed to get the main thread ID of the target process" << std::endl;
         return 1;
     }
     
@@ -210,24 +252,51 @@ int main() {
         return 0;
     }
 
+    // Open a handle to the target thread
+    HANDLE hThread = OpenThread(THREAD_GET_CONTEXT, FALSE, pid);
+    if (hThread == NULL) {
+        std::cout << "Failed to open the target thread" << std::endl;
+        CloseHandle(hProcess);
+        return 1;
+    }
+
+    // Get the context of the target thread
+    CONTEXT context;
+    context.ContextFlags = CONTEXT_FULL;
+    if (!GetThreadContext(hThread, &context)) {
+        std::cout << "Failed to get the thread context" << std::endl;
+        CloseHandle(hThread);
+        CloseHandle(hProcess);
+        return 1;
+    }
+
+    // Get the stack pointer value from the context
+    uintptr_t stackPointer = context.Rsp;
+
+    // Output the stack pointer value
+    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl;
+
     // Calculate the start and end addresses of the module in the target process
     // Determine the size of the module and set the end address to search
     uintptr_t startAddress = (uintptr_t)module_info.lpBaseOfDll;
     uintptr_t endAddress = startAddress + module_info.SizeOfImage;
 
-    const char* sig = "83 f8 ? 75 ? 66 0f 1f 84 00";
+    // Output the stack pointer value
+    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl << "continue: press enter\n";
+    std::cin.get();
 
-    char pattern[30] = "\x2a\x00";
-    char mask[20] = "xx";
+
+    char pattern[30] = "\x2A\x00\x00";
+    char mask[20] = "x?x";
     void* addres = exPatternScan(hProcess, startAddress, endAddress, pattern, mask);
+    int value = 1;
     if (addres == NULL) {
-        printf("fucked up finding sig, %s", sig);
+        printf("fucked up finding sig, \npattern: %s \nmask: %s", pattern, mask);
         std::cout << "\ntype in memory address instead? \n y/n: ";
     }
     else {
-        int test = 0;
-        if (ReadProcessMemory(hProcess, addres, &test, sizeof(test), NULL)) {
-            std::cout << "Variable value: " << test << std::endl;
+        if (ReadProcessMemory(hProcess, addres, &value, sizeof(value), NULL)) {
+            std::cout << "Variable value: " << value << std::endl;
             std::cout << "Variable address: " << std::hex << reinterpret_cast<uintptr_t>(addres) << std::endl;
 
             std::cout << "\nAddress is within module bounds." << std::endl << "is this correct? y/n: ";
@@ -240,28 +309,39 @@ int main() {
     void* address;
     std::string input;
     std::cin >> input;
-    if(input != "y") {
+    if(input == "y") {
+        while (value != 0) {
+            if (!ReadProcessMemory(hProcess, addres, &value, sizeof(value), NULL)) printf("failed reading");
+            std::cout << "value: " << value << std::endl;
+            for (int i = 1; i < 11; i++) {
+                if (!ReadProcessMemory(hProcess, addres, &value, sizeof(value), NULL)) printf("failed reading");
+                std::cout << "loop: " << i << " value: " << value << std::endl;
+                if (!WriteProcessMemory(hProcess, addres, &i, sizeof(i), NULL)) printf("failed writing");
+                Sleep(500);
+            }
+
+            printf("written\n");
+        }
+
+    }
+    else {
         long long adresinput;
         std::cout << "memory addres: ";
         std::cin >> std::hex >> adresinput;
+
         address = reinterpret_cast<LPVOID>(adresinput);
-    }
-    else {
-        address = reinterpret_cast<LPVOID>(addres);
-    }
-
-    int value = 1;
-    while (value != 0) {
-        if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) printf("failed reading");
-        std::cout << "value: " << value << std::endl;
-        for (int i = 1; i < 11; i++) {
+        while (value != 0) {
             if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) printf("failed reading");
-            std::cout << "loop: " << i << " value: " << value << std::endl;
-            if(!WriteProcessMemory(hProcess, address, &i, sizeof(i), NULL)) printf("failed writing");
-            Sleep(500);
-        }
+            std::cout << "value: " << value << std::endl;
+            for (int i = 1; i < 11; i++) {
+                if (!ReadProcessMemory(hProcess, address, &value, sizeof(value), NULL)) printf("failed reading");
+                std::cout << "loop: " << i << " value: " << value << std::endl;
+                if (!WriteProcessMemory(hProcess, address, &i, sizeof(i), NULL)) printf("failed writing");
+                Sleep(500);
+            }
 
-        printf("written\n");
+            printf("written\n");
+        }    
     }
 
     printf("bye\n");
