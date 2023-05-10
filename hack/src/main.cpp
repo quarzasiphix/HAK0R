@@ -280,14 +280,15 @@ int main() {
     uintptr_t stackPointer = context.Rsp;   
 
 
-    uintptr_t offset = 20;  // Replace with your observed offset value
+    uintptr_t offset = 0xC8;  // Replace with your observed offset value
     uintptr_t variableAddress = stackPointer + offset;
 
     
     // Output the stack pointer value
-    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl 
-              << "myvar address: " << std::hex << variableAddress << std::endl
-              << "continue: press enter\n";
+    std::cout   << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl 
+                << "myvar address: " << std::hex << variableAddress << std::endl
+                << "myvar offset: " << std::hex << offset << std::endl
+                << "continue: press enter\n";
     std::cin.get();
 
 
