@@ -252,8 +252,14 @@ int main() {
         return 0;
     }
 
+    // Calculate the start and end addresses of the module in the target process
+    // Determine the size of the module and set the end address to search
+    uintptr_t startAddress = (uintptr_t)module_info.lpBaseOfDll;
+    uintptr_t endAddress = startAddress + module_info.SizeOfImage;
+
     // Open a handle to the target thread
-    HANDLE hThread = OpenThread(THREAD_GET_CONTEXT, FALSE, pid);
+
+    HANDLE hThread = OpenThread(THREAD_GET_CONTEXT, FALSE, targetMainThreadId);
     if (hThread == NULL) {
         std::cout << "Failed to open the target thread" << std::endl;
         CloseHandle(hProcess);
@@ -271,18 +277,17 @@ int main() {
     }
 
     // Get the stack pointer value from the context
-    uintptr_t stackPointer = context.Rsp;
+    uintptr_t stackPointer = context.Rsp;   
 
+
+    uintptr_t offset = 20;  // Replace with your observed offset value
+    uintptr_t variableAddress = stackPointer + offset;
+
+    
     // Output the stack pointer value
-    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl;
-
-    // Calculate the start and end addresses of the module in the target process
-    // Determine the size of the module and set the end address to search
-    uintptr_t startAddress = (uintptr_t)module_info.lpBaseOfDll;
-    uintptr_t endAddress = startAddress + module_info.SizeOfImage;
-
-    // Output the stack pointer value
-    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl << "continue: press enter\n";
+    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl 
+              << "myvar address: " << std::hex << variableAddress << std::endl
+              << "continue: press enter\n";
     std::cin.get();
 
 
