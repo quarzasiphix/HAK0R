@@ -10,6 +10,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hack", "hack\hack.vcxproj",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "victim", "victim\victim.vcxproj", "{214BBA7B-E78D-431E-9BC9-FFA5414687DB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dependencies", "dependencies", "{0BB6232A-9613-44B4-9330-C17B67C430E9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "core", "core", "{63BB3AAC-A786-41C0-83AD-408D664B9B38}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "log", "vendor\log\loggger\log.vcxproj", "{4499C5BA-AF02-43F7-915B-B95DCA3CC16B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Release|x64 = Release|x64
@@ -19,9 +25,16 @@ Global
 		{B39E8403-075C-4AE6-989D-7C54906B08A7}.Release|x64.Build.0 = Release|x64
 		{214BBA7B-E78D-431E-9BC9-FFA5414687DB}.Release|x64.ActiveCfg = Release|x64
 		{214BBA7B-E78D-431E-9BC9-FFA5414687DB}.Release|x64.Build.0 = Release|x64
+		{4499C5BA-AF02-43F7-915B-B95DCA3CC16B}.Release|x64.ActiveCfg = Release|x64
+		{4499C5BA-AF02-43F7-915B-B95DCA3CC16B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B39E8403-075C-4AE6-989D-7C54906B08A7} = {63BB3AAC-A786-41C0-83AD-408D664B9B38}
+		{214BBA7B-E78D-431E-9BC9-FFA5414687DB} = {63BB3AAC-A786-41C0-83AD-408D664B9B38}
+		{4499C5BA-AF02-43F7-915B-B95DCA3CC16B} = {0BB6232A-9613-44B4-9330-C17B67C430E9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F98DDFDF-3522-4536-A92C-62DCE41CF1DE}
