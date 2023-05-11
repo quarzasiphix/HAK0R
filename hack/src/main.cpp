@@ -210,6 +210,8 @@ void* exPatternScan(HANDLE hproc, uintptr_t begin, uintptr_t end, char* pattern,
     return nullptr; // fix: use nullptr instead of 0
 }
 
+/*
+
 int main() {
     // Find the window with the specified class name or window title
     std::wstring name = L"victim.exe";
@@ -255,7 +257,8 @@ int main() {
     // Calculate the start and end addresses of the module in the target process
     // Determine the size of the module and set the end address to search
     uintptr_t startAddress = (uintptr_t)module_info.lpBaseOfDll;
-    uintptr_t endAddress = startAddress + module_info.SizeOfImage;
+    uintptr_t endAddress   = startAddress + module_info.SizeOfImage;
+
 
     // Open a handle to the target thread
 
@@ -279,23 +282,26 @@ int main() {
     // Get the stack pointer value from the context
     uintptr_t stackPointer = context.Rsp;   
 
+    //uintptr_t targetAddress = 0xD7C537FD80; // Replace with the actual memory address you're interested in
 
-    uintptr_t offset = 0xC8;  // Replace with your observed offset value
-    uintptr_t variableAddress = stackPointer + offset;
+    intptr_t offset = 0xc8; //= static_cast<intptr_t>(targetAddress) - static_cast<intptr_t>(stackPointer);
 
-    
+    uintptr_t addressVar = stackPointer + offset;
+
     // Output the stack pointer value
-    std::cout   << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl 
-                << "myvar address: " << std::hex << variableAddress << std::endl
-                << "myvar offset: " << std::hex << offset << std::endl
-                << "continue: press enter\n";
-    std::cin.get();
+    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl
+        << "myvar address: " << std::hex << addressVar << std::endl
+        << "myvar offset: " << std::hex << offset << std::endl;
 
+    int value = 1;
 
+    if (!ReadProcessMemory(hProcess, (LPCVOID)addressVar, &value, sizeof(value), NULL)) std::cout << "\nFailed reading" << std::endl;
+    else std::cout << "Value: " << std::dec << value << std::endl << "Is this correct? (y/n): ";
+
+    /* attempt at using signatures.
     char pattern[30] = "\x2A\x00\x00";
     char mask[20] = "x?x";
     void* addres = exPatternScan(hProcess, startAddress, endAddress, pattern, mask);
-    int value = 1;
     if (addres == NULL) {
         printf("fucked up finding sig, \npattern: %s \nmask: %s", pattern, mask);
         std::cout << "\ntype in memory address instead? \n y/n: ";
@@ -311,24 +317,37 @@ int main() {
             std::cerr << "Failed to read variable: " << GetLastError() << std::endl;
         }
     }
+    
 
-    void* address;
+    void* address = &addressVar;
+
     std::string input;
     std::cin >> input;
-    if(input == "y") {
+    if (input == "y") {
         while (value != 0) {
-            if (!ReadProcessMemory(hProcess, addres, &value, sizeof(value), NULL)) printf("failed reading");
-            std::cout << "value: " << value << std::endl;
+            if (!ReadProcessMemory(hProcess, (LPCVOID)addressVar, &value, sizeof(value), NULL)) {
+                printf("\nFailed reading\n");
+                break; // Exit the loop if reading fails
+            }
+            std::cout << "Value: " << value << std::endl;
+
             for (int i = 1; i < 11; i++) {
-                if (!ReadProcessMemory(hProcess, addres, &value, sizeof(value), NULL)) printf("failed reading");
-                std::cout << "loop: " << i << " value: " << value << std::endl;
-                if (!WriteProcessMemory(hProcess, addres, &i, sizeof(i), NULL)) printf("failed writing");
+                if (!WriteProcessMemory(hProcess, (LPVOID)addressVar, &i, sizeof(i), NULL)) {
+                    printf("Failed writing\n");
+                    break; // Exit the loop if writing fails
+                }
                 Sleep(500);
+
+                // Read the value after writing
+                if (!ReadProcessMemory(hProcess, (LPCVOID)addressVar, &value, sizeof(value), NULL)) {
+                    printf("Failed reading\n");
+                    break; // Exit the loop if reading fails
+                }
+                std::cout << "Loop: " << i << " Value: " << value << std::endl;
             }
 
-            printf("written\n");
+            printf("Written\n");
         }
-
     }
     else {
         long long adresinput;
@@ -356,3 +375,5 @@ int main() {
 
     return 0;
 }
+
+*/
