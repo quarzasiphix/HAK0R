@@ -1,13 +1,82 @@
 #include <common.hpp>
 
-int main() {
-    hack::process proc(L"victim.exe");
+DWORD GetProcessIdByName(const std::wstring& name) {
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
 
-    uintptr_t addy = 0x7A34EFFA40;
+    PROCESSENTRY32 entry = { 0 };
+    entry.dwSize = sizeof(PROCESSENTRY32);
+
+    if (!Process32First(snapshot, &entry)) {
+        CloseHandle(snapshot);
+        return 0;
+    }
+
+    DWORD pid = 0;
+    do {
+        if (name.compare(entry.szExeFile) == 0) {
+            pid = entry.th32ProcessID;
+            break;
+        }
+    } while (Process32Next(snapshot, &entry));
+
+    CloseHandle(snapshot);
+    return pid;
+}
+
+/*
+class proc {
+    DWORD pid{};
+    HANDLE h_process{};
+
+public:
+    proc(std::wstring name) {
+        pid = GetProcessIdByName(name);
+        printf("finding process..");
+        while (pid == 0) {
+            pid = GetProcessIdByName(name);
+            Sleep(300);
+        }
+        system("cls");
+        h_process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+        if (h_process == NULL) {
+            std::cout << "Failed to open process" << std::endl;
+            return;
+        }
+    }
+
+    DWORD get_pid() { return pid; }
+    HANDLE get_proc() { return h_process; }
+};
+
+*/
+int main() {
+    //hack::process proc(L"victim.exe");
+
+    std::wstring name = L"victim.exe";
+    //proc p(name);
+    hack::proc p(name);
+
+    uintptr_t addy = 0x000000317D2FFA10;
 
     int read = 1;
     int write = 2;
 
+    if (p.readProcMem<int>((LPVOID)addy, read)) {
+        std::cout << "value: " << read << "\n";
+        while (read != 0) {
+            std::cout << "write: ";
+            std::cin >> write;
+            if (p.writeProcMem<int>((LPVOID)addy, write))
+                std::cout << "written to: " << addy << " " << write << std::endl;
+        }
+    }
+
+    std::cin.get();
+
+    /*
     if (proc.readProcMem<int>(addy, read)) {
         while (read != 0) {
             std::cout << "write: ";
@@ -17,10 +86,8 @@ int main() {
         }
     }
 
-    else {
-        printf("\nfuckd up\n");
-        std::cin.get();
-    }
+    
+    */
 }
 
 /*
