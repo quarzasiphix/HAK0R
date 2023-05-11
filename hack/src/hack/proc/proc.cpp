@@ -1,6 +1,7 @@
 #include "proc.hpp"
+
 namespace hack {
-    DWORD proc::GetProcessIdByName(const std::wstring& name) {
+    DWORD process::GetProcessIdByName(const std::wstring& name) {
         HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if (snapshot == INVALID_HANDLE_VALUE) {
             return 0;
@@ -27,7 +28,7 @@ namespace hack {
     }
 
 
-    DWORD proc::thread::GetMainThreadId(DWORD processId)
+    DWORD process::thread::GetMainThreadId(DWORD processId)
     {
         HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
         if (hThreadSnapshot == INVALID_HANDLE_VALUE)
@@ -56,29 +57,20 @@ namespace hack {
         return mainThreadId;
     }
 
-    template <typename T>
-    bool proc::writeProcMem(uintptr_t address, T& value) {
-        if (!WriteProcessMemory(h_process, (LPVOID)address, &T, sizeof(T), NULL)) {
-            printf("failed writing");
-            return false;
-        } return true;
-    }
 
-    template <typename T>
-    bool proc::readProcMem(uintptr_t address, T& value) {
-        if (!ReadProcessMemory(h_process, (LPVOID)address, &T, sizeof(T), NULL)) {
-            printf("failed reading");
-            return false;
-        } return true;
-    }
-
-
-    proc::thread::~thread() {
+    process::thread::~thread() {
         CloseHandle(h_thread);
     }
 
-    proc::thread::thread(proc proc) {
-        h_thread = OpenThread(PROCESS_ALL_ACCESS, FALSE, targetMainThreadId);
+
+    process::thread::thread(process p_proc): proc(p_proc) {
+        targetMainThreadId = GetMainThreadId(proc.pid);
+        if (targetMainThreadId == 0) {
+            std::cout << "Failed to get the main thread ID of the target process" << std::endl;
+            return;
+        }
+
+        h_thread = OpenThread(THREAD_GET_CONTEXT, FALSE, targetMainThreadId);
         if (h_thread == NULL) {
             std::cout << "Failed to open the target thread" << std::endl;
             return;
@@ -93,8 +85,8 @@ namespace hack {
         printf("thread initialised\n");
     }
 
-    proc::proc(std::wstring name) : m_name(name) {
-        DWORD pid = GetProcessIdByName(m_name);
+    process::process(std::wstring name) : m_name(name) {
+        pid = GetProcessIdByName(m_name);
         printf("finding process..");
         while (pid == 0) {
             pid = GetProcessIdByName(name);
@@ -109,10 +101,11 @@ namespace hack {
         
         m_thread = new thread(*this);
 
-        printf("attached to process: %s , succesfully", m_name.c_str());
+        std::wcout << "attached to process: " << m_name << ", succesfully\n";
     }
 
-    proc::~proc() {
+    process::~process() {
+        delete m_thread;
         CloseHandle(h_process);
     }
 }

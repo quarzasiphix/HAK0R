@@ -2,13 +2,12 @@
 #include <common.hpp>
 
 namespace hack {
-	class proc {
-	public:
+	class process {
 		std::wstring m_name;
 
 		DWORD pid;
 
-		HANDLE h_process;
+		HANDLE h_process{};
 
 		HMODULE h_module = nullptr;
 		DWORD cbNeeded = 0;
@@ -21,27 +20,42 @@ namespace hack {
 		DWORD GetProcessIdByName(const std::wstring& name);
 
 		struct thread {
-			thread(proc proc);
+			thread(process p_proc);
 			~thread();
 
-			HANDLE h_thread;
+			process& proc;
 
-			CONTEXT context;
+			HANDLE h_thread{};
 
-			DWORD targetMainThreadId;
+			CONTEXT context{};
+
+			DWORD targetMainThreadId{};
 			DWORD GetMainThreadId(DWORD processId);
 		};
 
+	public:
 		thread* m_thread;
 
 		template <typename T>
-		bool readProcMem(uintptr_t address, T& value);
+		bool readProcMem(uintptr_t address, T& value) {
+			if (!ReadProcessMemory(h_process, (LPVOID)address, &value, sizeof(value), NULL)) {
+				std::cout << "\nFailed reading" << std::endl;
+				return false;
+			}
+			return true;
+		}
 
 		template <typename T>
-		bool writeProcMem(uintptr_t address, T& value);
+		bool writeProcMem(uintptr_t address, T& value) {
+			if (!WriteProcessMemory(h_process, (LPVOID)address, &value, sizeof(value), NULL)) {
+				std::cout << "\nFailed writing" << std::endl;
+				return false;
+			}
+			return true;
+		}
 
-		proc(std::wstring name);
+		process(std::wstring name);
 
-		~proc();
+		~process();
 	};
 }

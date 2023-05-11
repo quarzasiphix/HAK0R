@@ -53,15 +53,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="signatures.cpp" />
-    <ClCompile Include="src\hack\offsets\offsets.cpp" />
     <ClCompile Include="src\hack\proc\proc.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="includes\common.hpp" />
-    <ClInclude Include="signatures.hpp" />
-    <ClInclude Include="src\hack\offsets\offsets.hpp" />
+    <ClInclude Include="includes\pch.hpp" />
+    <ClInclude Include="src\hack\hack.hpp" />
     <ClInclude Include="src\hack\proc\proc.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

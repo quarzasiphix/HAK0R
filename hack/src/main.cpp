@@ -1,5 +1,30 @@
 #include <common.hpp>
 
+int main() {
+    hack::process proc(L"victim.exe");
+
+    uintptr_t addy = 0x7A34EFFA40;
+
+    int read = 1;
+    int write = 2;
+
+    if (proc.readProcMem<int>(addy, read)) {
+        while (read != 0) {
+            std::cout << "write: ";
+            std::cin >> write;
+            if (proc.writeProcMem<int>(addy, write))
+                std::cout << "written to: " << addy << " " << write << std::endl;
+        }
+    }
+
+    else {
+        printf("\nfuckd up\n");
+        std::cin.get();
+    }
+}
+
+/*
+
 void Parse(char* combo, char* pattern, char* mask)
 {
     char lastChar = ' ';
@@ -209,8 +234,6 @@ void* exPatternScan(HANDLE hproc, uintptr_t begin, uintptr_t end, char* pattern,
     }
     return nullptr; // fix: use nullptr instead of 0
 }
-
-/*
 
 int main() {
     // Find the window with the specified class name or window title

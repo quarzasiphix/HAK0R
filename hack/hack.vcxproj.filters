@@ -21,12 +21,6 @@
     <ClCompile Include="src\hack\proc\proc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\hack\offsets\offsets.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="signatures.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="includes\common.hpp">
@@ -35,10 +29,10 @@
     <ClInclude Include="src\hack\proc\proc.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\hack\offsets\offsets.hpp">
+    <ClInclude Include="src\hack\hack.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="signatures.hpp">
+    <ClInclude Include="includes\pch.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
