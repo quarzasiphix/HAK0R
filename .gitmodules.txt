@@ -1,3 +1,0 @@
-[submodule "vendor/log"]
-	path = vendor/log
-	url = https://github.com/quarzasiphix/log.git

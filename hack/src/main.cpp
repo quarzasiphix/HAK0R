@@ -1,5 +1,65 @@
 #include <common.hpp>
 
+/*
+uintptr_t stackPointer = context.Rsp;
+
+    //uintptr_t targetAddress = 0xD7C537FD80; // Replace with the actual memory address you're interested in
+
+    intptr_t offset = 0xc8; //= static_cast<intptr_t>(targetAddress) - static_cast<intptr_t>(stackPointer);
+
+    uintptr_t addressVar = stackPointer + offset;
+
+    // Output the stack pointer value
+    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl
+        << "myvar address: " << std::hex << addressVar << std::endl
+        << "myvar offset: " << std::hex << offset << std::endl;
+*/
+
+int main() {
+    std::wstring name = L"victim.exe";
+    hack::proc p(name);
+
+    int read = 1;
+    int write = 2;
+
+    uintptr_t addy = 0x000000D8B00FF840;
+
+    uintptr_t stackPointer = p.get_context().Rsp;
+
+    //uintptr_t targetAddress = 0xD7C537FD80; // Replace with the actual memory address you're interested in
+
+    //intptr_t offset = 0xc8; //= static_cast<intptr_t>(targetAddress) - static_cast<intptr_t>(stackPointer);
+
+    //uintptr_t addressVar = stackPointer + offset;
+
+    // Output the stack pointer value
+    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl;
+        //<< "myvar address: " << std::hex << addressVar << std::endl
+        //<< "myvar offset: " << std::hex << offset << std::endl;
+
+
+    read = p.readProcMem<int>(addy);
+    if (p.read_success == true) {
+        std::cout << "value: " << read << "\n";
+        while (read != 0) {
+            std::cout << "write: ";
+            std::cin >> write;
+            if (p.writeProcMem<int>(addy, write)) {
+                std::cout << "written to: " << addy << " " << write << std::endl;
+                read = p.readProcMem<int>(addy);
+                if (p.read_success == true)
+                    std::cout << "value: " << read << "\n";
+            }
+        }
+    }
+
+    
+    std::cin.get();
+}
+
+/*
+
+
 DWORD GetProcessIdByName(const std::wstring& name) {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE) {
@@ -25,58 +85,6 @@ DWORD GetProcessIdByName(const std::wstring& name) {
     CloseHandle(snapshot);
     return pid;
 }
-
-/*
-class proc {
-    DWORD pid{};
-    HANDLE h_process{};
-
-public:
-    proc(std::wstring name) {
-        pid = GetProcessIdByName(name);
-        printf("finding process..");
-        while (pid == 0) {
-            pid = GetProcessIdByName(name);
-            Sleep(300);
-        }
-        system("cls");
-        h_process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-        if (h_process == NULL) {
-            std::cout << "Failed to open process" << std::endl;
-            return;
-        }
-    }
-
-    DWORD get_pid() { return pid; }
-    HANDLE get_proc() { return h_process; }
-};
-
-*/
-int main() {
-    //hack::process proc(L"victim.exe");
-
-    std::wstring name = L"victim.exe";
-    //proc p(name);
-    hack::proc p(name);
-
-    uintptr_t addy = 0x000000317D2FFA10;
-
-    int read = 1;
-    int write = 2;
-
-    if (p.readProcMem<int>((LPVOID)addy, read)) {
-        std::cout << "value: " << read << "\n";
-        while (read != 0) {
-            std::cout << "write: ";
-            std::cin >> write;
-            if (p.writeProcMem<int>((LPVOID)addy, write))
-                std::cout << "written to: " << addy << " " << write << std::endl;
-        }
-    }
-
-    std::cin.get();
-
-    /*
     if (proc.readProcMem<int>(addy, read)) {
         while (read != 0) {
             std::cout << "write: ";
@@ -87,11 +95,6 @@ int main() {
     }
 
     
-    */
-}
-
-/*
-
 void Parse(char* combo, char* pattern, char* mask)
 {
     char lastChar = ' ';

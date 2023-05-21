@@ -13,13 +13,26 @@ int main() {
 		*/
 
 		int myVariable = 42;
-
 		int* pmyVariable = &myVariable;
+
+		float myFloat = 10;
+		float* pmyFloat = &myFloat;
+
+		double myDouble = 69;
+		double* pmyDouble = &myDouble;
 
 		while (myVariable != 0) {
 			system("cls");
 			std::cout << ". addres: " << pmyVariable << std::endl;
 			std::cout << "myVariable: " << myVariable << std::endl;
+
+			std::cout << ".float addres: " << pmyFloat << std::endl;
+			std::cout << "mFloat: " << myFloat << std::endl;
+
+			std::cout << ".double addres: " << pmyDouble << std::endl;
+			std::cout << "myVariable: " << myDouble << std::endl;
+
+
 			while(myVariable == 42) Sleep(500);
 			myVariable += 1;
 			Sleep(200);
