@@ -19,10 +19,16 @@ int main() {
     std::wstring name = L"victim.exe";
     hack::proc p(name);
 
-    int read = 1;
+    printf("Waiting for process...\n");
+    while (p.is_access == 2) {
+        p = hack::proc(name);
+    }
+    system("cls");
+
+    int read = {};
     int write = 2;
 
-    uintptr_t addy = 0x000000D8B00FF840;
+    uintptr_t addy = 0x000000E16BAFF6F0;
 
     uintptr_t stackPointer = p.get_context().Rsp;
 
@@ -33,25 +39,26 @@ int main() {
     //uintptr_t addressVar = stackPointer + offset;
 
     // Output the stack pointer value
-    std::cout << "Stack Pointer (RSP): " << std::hex << stackPointer << std::endl;
+    std::cout << "Stack Pointer (RSP): " << std::hex << &stackPointer << std::endl;
         //<< "myvar address: " << std::hex << addressVar << std::endl
         //<< "myvar offset: " << std::hex << offset << std::endl;
 
-
     read = p.readProcMem<int>(addy);
     if (p.read_success == true) {
-        std::cout << "value: " << read << "\n";
+        std::cout << "value: " << std::dec << read << "\n"; // Print in decimal format
         while (read != 0) {
             std::cout << "write: ";
+            ///std::cin.ignore(); // Ignore remaining newline characters
             std::cin >> write;
             if (p.writeProcMem<int>(addy, write)) {
-                std::cout << "written to: " << addy << " " << write << std::endl;
+                std::cout << "written to: " << std::hex << &addy << " " << std::dec << write << std::endl;
                 read = p.readProcMem<int>(addy);
                 if (p.read_success == true)
-                    std::cout << "value: " << read << "\n";
+                    std::cout << "value: " << std::dec << read << "\n";
             }
         }
     }
+
 
     
     std::cin.get();

@@ -72,13 +72,12 @@ namespace hack {
 		bool read_success = false;
 		template <typename T>
 		T readProcMem(uintptr_t address) {
-			T value;
+			T value = {};
 			read_success = false;
 			if (!ReadProcessMemory(h_proc, (LPCVOID)address, &value, sizeof(value), NULL)) {
 				DWORD errorCode = GetLastError();
-				//("Failed reading process memory, error: {0}", errorCode);
+				std::cerr << "Failed reading process memory, error: " <<  errorCode;
 				throw ReadMemoryException();
-				return nullptr;
 			}
 			read_success = true;
 			return value;

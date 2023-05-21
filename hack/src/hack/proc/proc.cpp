@@ -43,6 +43,7 @@ namespace hack {
                         break;  // Found the main thread of the target process in the same process
                     }
                 }
+
             } while (Thread32Next(hThreadSnapshot, &te32));
         }
 
@@ -53,19 +54,19 @@ namespace hack {
     proc::thread::thread(hack::proc& p_proc) : proc(p_proc) {
         targetMainThreadId = GetMainThreadId(proc.get_pid());
         if (targetMainThreadId == 0) {
-            EN_WARN("Failed to get the main thread ID of the target process");
+            //EN_WARN("Failed to get the main thread ID of the target process");
             return;
         }
 
         h_thread = OpenThread(THREAD_ALL_ACCESS, FALSE, targetMainThreadId);
         if (h_thread == NULL) {
-            EN_WARN("Failed to open target thread");
+            //EN_WARN("Failed to open target thread");
             return;
         }
 
         context.ContextFlags = CONTEXT_FULL;
         if (!GetThreadContext(h_thread, &context)) {
-            EN_WARN("Failed to get thread context");
+            //EN_WARN("Failed to get thread context");
             return;
         }
 
@@ -77,6 +78,7 @@ namespace hack {
         if (this->get_pid() == 0) {
             //EN_WARN("Failed attaching {0} ", name);
             is_access = 2;
+            return;
         }
 
 
@@ -128,7 +130,7 @@ namespace hack {
                 std::string name = wstringToString(m_name);
                 std::cerr << "Not allowed to access process : " << name << ": name";
             }
-            if (this->get_pid() != 0) std::cerr << "not allowed to access process"; //EN_WARN("Not allowed to access process : {0} :", this->get_pid());
+            //if (this->get_pid() != 0) std::cerr << "not allowed to access process"; //EN_WARN("Not allowed to access process : {0} :", this->get_pid());
 
             attached = false;
             is_access = 2;
@@ -166,7 +168,6 @@ namespace hack {
         return m_proc.readProcMem<T>(address);
     }
     */
-}
 }
 
 
