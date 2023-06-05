@@ -1,14 +1,14 @@
 #include <common.hpp>
 
-void print_vars(int i, float f, double d) {
-	std::cout << ". addres: " << &i << std::endl;
-	std::cout << "myVariable: " << i << std::endl;
+void print_vars(int* i, float* f, double* d) {
+	std::cout << ". addres: " << i << std::endl;
+	std::cout << "myVariable: " << *i << std::endl;
 
-	std::cout << ".float addres: " << &f << std::endl;
-	std::cout << "mFloat: " << f << std::endl;
+	std::cout << ".float addres: " << f << std::endl;
+	std::cout << "mFloat: " << *f << std::endl;
 
-	std::cout << ".double addres: " << &d << std::endl;
-	std::cout << "myVariable: " << d << std::endl;
+	std::cout << ".double addres: " << d << std::endl;
+	std::cout << "myVariable: " << *d << std::endl;
 }
 
 int main() {
@@ -31,22 +31,11 @@ int main() {
 	double* pmyDouble = &myDouble;
 
 	while (myVariable != 0) {
+		Sleep(200);
 		system("cls");
-		print_vars(myVariable, myFloat, myDouble);
-		/*
-		std::cout << ". addres: " << pmyVariable << std::endl;
-		std::cout << "myVariable: " << myVariable << std::endl;
-
-		std::cout << ".float addres: " << pmyFloat << std::endl;
-		std::cout << "mFloat: " << myFloat << std::endl;
-
-		std::cout << ".double addres: " << pmyDouble << std::endl;
-		std::cout << "myVariable: " << myDouble << std::endl;
-		*/
-
+		print_vars(&myVariable, &myFloat, &myDouble);
 		while(myVariable == 42) Sleep(500);
 		myVariable += 1;
-		Sleep(200);
 	}
 
 	printf("myvar = 0, bye\n");

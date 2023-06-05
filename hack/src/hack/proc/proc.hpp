@@ -38,6 +38,7 @@ namespace hack {
 		struct shellhook {
 			proc& m_proc;
 			LPVOID remoteMemory;
+			bool set_hook;
 			template<typename Func>
 			shellhook(proc& proc, uintptr_t jmpAddress, Func func) : m_proc(proc) {
 				// Allocate executable memory in the target process
@@ -45,6 +46,7 @@ namespace hack {
 				if (!remoteMemory) {
 					std::cerr << "Failed to allocate memory in the target process" << std::endl;
 					//CloseHandle(m_proc->get_proc());
+					set_hook = false;
 					return;
 				}
 
@@ -55,6 +57,7 @@ namespace hack {
 					std::cerr << "Failed to write the function code into the target process memory" << std::endl;
 					VirtualFreeEx(m_proc.get_proc(), remoteMemory, 0, MEM_RELEASE);
 					//CloseHandle(hProcess);
+					set_hook = false;
 					return;
 				}
 
@@ -76,11 +79,12 @@ namespace hack {
 					std::cerr << "Failed to write the JMP instruction" << std::endl;
 					VirtualFreeEx(m_proc.get_proc(), remoteMemory, 0, MEM_RELEASE);
 					//CloseHandle(hProcess);
-					return 1;
+					set_hook = false;
+					return;
 				}
 
+				set_hook = true;
 				std::cout << "JMP instruction replaced with the jump to MyFunction" << std::endl;
-
 			}
 		};
 
@@ -108,10 +112,14 @@ namespace hack {
 		uintptr_t get_startAddress() { return (uintptr_t)module_info.lpBaseOfDll; }
 		uintptr_t get_endAddress() { return get_startAddress() + module_info.SizeOfImage; }
 
+		LPCVOID FindSignatureAddress(const std::vector<BYTE>& signature);
+
 		template<typename Func>
-		bool set_shellhook(Func func) {
-			m_hook = new shellhook(*this, func);
-			return false;
+		bool set_shellhook(uintptr_t jmpAddress, Func func) {
+			std::cout << "setting hook..\n";
+			m_hook = new shellhook(*this, jmpAddress, func);
+			if (m_hook == nullptr) return false;
+			else return true;
 		}
 
 		void get_memoryRegion(uintptr_t& start, uintptr_t& end) {

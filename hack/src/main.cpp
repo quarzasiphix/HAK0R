@@ -15,7 +15,6 @@ uintptr_t stackPointer = context.Rsp;
         << "myvar address: " << std::hex << addressVar << std::endl
         << "myvar offset: " << std::hex << offset << std::endl;
 */
-
 /* sethook example without anstraction
 * 
 * #include <iostream>
@@ -89,6 +88,7 @@ int main()
 }
 
 */
+
 void MyFunction()
 {
     // Your custom function code here
@@ -108,37 +108,50 @@ int main() {
     int read = {};
     int write = 2;
 
-    uintptr_t addy = 0x000000E16BAFF6F0;
-
+    uintptr_t addy = 0x0000003F545BFD70;
     uintptr_t stackPointer = p.get_context().Rsp;
 
     //uintptr_t targetAddress = 0xD7C537FD80; // Replace with the actual memory address you're interested in
-
     //intptr_t offset = 0xc8; //= static_cast<intptr_t>(targetAddress) - static_cast<intptr_t>(stackPointer);
-
     //uintptr_t addressVar = stackPointer + offset;
-
     // Output the stack pointer value
     //std::cout << "Stack Pointer (RSP): " << std::hex << &stackPointer << std::endl;
         //<< "myvar address: " << std::hex << addressVar << std::endl
         //<< "myvar offset: " << std::hex << offset << std::endl;
 
-    p.set_shellhook(MyFunction);
+    std::vector<BYTE> signature = { 0x0F, 0x85, 0x00 };  // Replace with your signature pattern
+    LPCVOID sigaddy = p.FindSignatureAddress(signature);
+    if (sigaddy == nullptr) {
+        printf("failed finding sig");
+    }
+    else {
+        std::cout << sigaddy << std::endl;
+    }
 
-    read = p.readProcMem<int>(addy);
-    if (p.read_success == true) {
-        std::cout << "value: " << std::dec << read << "\n"; // Print in decimal format
-        while (read != 0) {
-            std::cout << "write: ";
-            ///std::cin.ignore(); // Ignore remaining newline characters
-            std::cin >> write;
-            if (p.writeProcMem<int>(addy, write)) {
-                std::cout << "written to: " << std::hex << &addy << " " << std::dec << write << std::endl;
-                read = p.readProcMem<int>(addy);
-                if (p.read_success == true)
-                    std::cout << "value: " << std::dec << read << "\n";
+    
+    if (!p.set_shellhook((uintptr_t)sigaddy, MyFunction)) {
+        printf("failed setting hook\n");
+    }
+
+    try {
+        read = p.readProcMem<int>(addy);
+        if (p.read_success == true) {
+            std::cout << "value: " << std::dec << read << "\n"; // Print in decimal format
+            while (read != 0) {
+                std::cout << "write: ";
+                ///std::cin.ignore(); // Ignore remaining newline characters
+                std::cin >> write;
+                if (p.writeProcMem<int>(addy, write)) {
+                    std::cout << "written to: " << std::hex << &addy << " " << std::dec << write << std::endl;
+                    read = p.readProcMem<int>(addy);
+                    if (p.read_success == true)
+                        std::cout << "value: " << std::dec << read << "\n";
+                }
             }
         }
+    }
+    catch (...) {
+        std::cout << "failed";
     }
 
 

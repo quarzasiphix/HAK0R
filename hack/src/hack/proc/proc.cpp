@@ -155,6 +155,39 @@ namespace hack {
         attached = true;
     }
 
+    LPCVOID proc::FindSignatureAddress(const std::vector<BYTE>& signature) {
+        MEMORY_BASIC_INFORMATION mbi;
+        BYTE* address = static_cast<BYTE*>((LPVOID)get_startAddress());
+        BYTE* endAddress = address;
+
+        while (VirtualQueryEx(get_proc(), endAddress, &mbi, sizeof(mbi))) {
+            address = endAddress;
+            endAddress += mbi.RegionSize;
+
+            if (mbi.State == MEM_COMMIT && mbi.Protect != PAGE_NOACCESS) {
+                std::vector<BYTE> buffer(mbi.RegionSize);
+                SIZE_T bytesRead;
+                if (ReadProcessMemory(get_proc(), address, buffer.data(), buffer.size(), &bytesRead)) {
+                    for (size_t i = 0; i < buffer.size() - signature.size(); ++i) {
+                        bool found = true;
+                        for (size_t j = 0; j < signature.size(); ++j) {
+                            if (buffer[i + j] != signature[j]) {
+                                found = false;
+                                break;
+                            }
+                        }
+
+                        if (found) {
+                            return static_cast<LPCVOID>(reinterpret_cast<BYTE*>(address) + i);
+                        }
+                    }
+                }
+            }
+        }
+
+        return nullptr;
+    }
+
 
     /*
     template<typename T>
