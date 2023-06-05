@@ -1,4 +1,5 @@
 #include <common.hpp>
+#include <hack/proc/proc.hpp>
 
 /*
 uintptr_t stackPointer = context.Rsp;
@@ -14,6 +15,85 @@ uintptr_t stackPointer = context.Rsp;
         << "myvar address: " << std::hex << addressVar << std::endl
         << "myvar offset: " << std::hex << offset << std::endl;
 */
+
+/* sethook example without anstraction
+* 
+* #include <iostream>
+#include <Windows.h>
+
+void MyFunction()
+{
+    // Your custom function code here
+    std::cout << "MyFunction called" << std::endl;
+}
+
+int main()
+{
+    // Get the target process handle
+    HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, targetProcessId);
+    if (!hProcess)
+    {
+        std::cerr << "Failed to open the target process" << std::endl;
+        return 1;
+    }
+
+    // Allocate executable memory in the target process
+    LPVOID remoteMemory = VirtualAllocEx(hProcess, NULL, sizeof(MyFunction), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!remoteMemory)
+    {
+        std::cerr << "Failed to allocate memory in the target process" << std::endl;
+        CloseHandle(hProcess);
+        return 1;
+    }
+
+    // Write the custom function code into the allocated memory
+    if (!WriteProcessMemory(hProcess, remoteMemory, (LPCVOID)&MyFunction, sizeof(MyFunction), NULL))
+    {
+        std::cerr << "Failed to write the function code into the target process memory" << std::endl;
+        VirtualFreeEx(hProcess, remoteMemory, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return 1;
+    }
+
+    // Define the memory address where the JMP instruction is located
+    uintptr_t jmpAddress = 0x12345678;  // Replace with the actual address
+
+    // Calculate the relative offset for the jump
+    uintptr_t relativeOffset = (uintptr_t)remoteMemory - (jmpAddress + 5);
+
+    // Prepare the new JMP instruction
+    unsigned char jmpInstruction[] = {
+        0xE9,                                      // JMP instruction
+        (relativeOffset & 0xFF),
+        ((relativeOffset >> 8) & 0xFF),
+        ((relativeOffset >> 16) & 0xFF),
+        ((relativeOffset >> 24) & 0xFF)
+    };
+
+    // Write the new JMP instruction to the target process memory
+    if (!WriteProcessMemory(hProcess, (LPVOID)jmpAddress, jmpInstruction, sizeof(jmpInstruction), NULL))
+    {
+        std::cerr << "Failed to write the JMP instruction" << std::endl;
+        VirtualFreeEx(hProcess, remoteMemory, 0, MEM_RELEASE);
+        CloseHandle(hProcess);
+        return 1;
+    }
+
+    std::cout << "JMP instruction replaced with the jump to MyFunction" << std::endl;
+
+    // Cleanup resources
+    VirtualFreeEx(hProcess, remoteMemory, 0, MEM_RELEASE);
+    CloseHandle(hProcess);
+
+    return 0;
+}
+
+*/
+void MyFunction()
+{
+    // Your custom function code here
+    std::cout << "MyFunction called" << std::endl;
+}
 
 int main() {
     std::wstring name = L"victim.exe";
@@ -39,9 +119,11 @@ int main() {
     //uintptr_t addressVar = stackPointer + offset;
 
     // Output the stack pointer value
-    std::cout << "Stack Pointer (RSP): " << std::hex << &stackPointer << std::endl;
+    //std::cout << "Stack Pointer (RSP): " << std::hex << &stackPointer << std::endl;
         //<< "myvar address: " << std::hex << addressVar << std::endl
         //<< "myvar offset: " << std::hex << offset << std::endl;
+
+    p.set_shellhook(MyFunction);
 
     read = p.readProcMem<int>(addy);
     if (p.read_success == true) {

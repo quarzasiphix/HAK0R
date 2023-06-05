@@ -2,6 +2,7 @@
 #include <common.hpp>
 
 namespace hack {
+	//struct shellhook;
 	class proc {
 		std::wstring m_name;
 		DWORD m_pid{};
@@ -34,8 +35,58 @@ namespace hack {
 			DWORD get_mainthreadid() { return targetMainThreadId; }
 		};
 
+		struct shellhook {
+			proc& m_proc;
+			LPVOID remoteMemory;
+			template<typename Func>
+			shellhook(proc& proc, uintptr_t jmpAddress, Func func) : m_proc(proc) {
+				// Allocate executable memory in the target process
+				remoteMemory = VirtualAllocEx(m_proc.get_proc(), NULL, sizeof(func), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+				if (!remoteMemory) {
+					std::cerr << "Failed to allocate memory in the target process" << std::endl;
+					//CloseHandle(m_proc->get_proc());
+					return;
+				}
+
+				printf("allocated virtual mem\n");
+
+				// Write the custom function code into the allocated memory
+				if (!WriteProcessMemory(m_proc.get_proc(), remoteMemory, (LPCVOID)&func, sizeof(func), NULL)) {
+					std::cerr << "Failed to write the function code into the target process memory" << std::endl;
+					VirtualFreeEx(m_proc.get_proc(), remoteMemory, 0, MEM_RELEASE);
+					//CloseHandle(hProcess);
+					return;
+				}
+
+				printf("added function to virtual mem\n");
+
+				uintptr_t relativeOffset = (uintptr_t)remoteMemory - (jmpAddress + 5);
+
+				// Prepare the new JMP instruction
+				unsigned char jmpInstruction[] = {
+					0xE9,                                      // JMP instruction
+					(relativeOffset & 0xFF),
+					((relativeOffset >> 8) & 0xFF),
+					((relativeOffset >> 16) & 0xFF),
+					((relativeOffset >> 24) & 0xFF)
+				};
+
+				// Write the new JMP instruction to the target process memory
+				if (!WriteProcessMemory(m_proc.get_proc(), (LPVOID)jmpAddress, jmpInstruction, sizeof(jmpInstruction), NULL)) {
+					std::cerr << "Failed to write the JMP instruction" << std::endl;
+					VirtualFreeEx(m_proc.get_proc(), remoteMemory, 0, MEM_RELEASE);
+					//CloseHandle(hProcess);
+					return 1;
+				}
+
+				std::cout << "JMP instruction replaced with the jump to MyFunction" << std::endl;
+
+			}
+		};
+
 	public:
 		thread* m_thread;
+		shellhook* m_hook;
 
 		proc(std::wstring name);
 		proc(DWORD pid);
@@ -56,6 +107,12 @@ namespace hack {
 
 		uintptr_t get_startAddress() { return (uintptr_t)module_info.lpBaseOfDll; }
 		uintptr_t get_endAddress() { return get_startAddress() + module_info.SizeOfImage; }
+
+		template<typename Func>
+		bool set_shellhook(Func func) {
+			m_hook = new shellhook(*this, func);
+			return false;
+		}
 
 		void get_memoryRegion(uintptr_t& start, uintptr_t& end) {
 			start = (uintptr_t)module_info.lpBaseOfDll;

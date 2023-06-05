@@ -8,6 +8,6 @@
 #include <Psapi.h>
 #include <search.h>
 #include <iomanip>
-
+#include <functional>
 #include <locale>
 #include <string>

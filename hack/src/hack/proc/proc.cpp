@@ -155,6 +155,7 @@ namespace hack {
         attached = true;
     }
 
+
     /*
     template<typename T>
     bool accessMemory<T>::writeMemory() {
